@@ -2,21 +2,14 @@
 File:			main.py
 Author:			Zachary Milke
 Description: 	This module runs at boot, controlling the light which reminds me to feed my fish.
-
-Intended Behavior
--------------------
-- Red LED lights up 6 hours (after the most recent feeding), indicating a feeding is required
-- User performs the feeding, then clicks the push button once (1x), resetting the LED to low and restarting the timer
-- The user may click the push button twice (2x) in quick succession to reset the timer manually, as the push button
-    acts as an external interrupt for the device.
 """
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------------------------------------------------
 
-from machine import Pin, Timer
-from micropython import const, mem_info
+from machine import Pin, Timer, freq
+from micropython import const
 from utime import sleep_ms
 
 
@@ -198,16 +191,29 @@ def perform_feeding_event() -> None:
     feed_required = False
     feed_event = False
     
-    # Set the indicating LED LOW
-    led_feed_indicator.off()
-    
     # Initialize a new feed reminder timer
     timer_feed_reminder = Timer(period=total_feed_delay_ms, mode=Timer.ONE_SHOT, callback=ISR_Set_Feed_Reminder)
+    
+    # Acknowledgement flashes
+    for i in range(3):
+        led_feed_indicator.off()
+        sleep_ms(250)
+        led_feed_indicator.on()
+        sleep_ms(500)
+    
+    # Finish with the indicating LED LOW
+    led_feed_indicator.off()
 
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Main Block
 # ---------------------------------------------------------------------------------------------------------------------
+
+# Power optimization:
+#	- Decrease CPU clock speed from 125 Mhz to 62.5 Mhz. This value may prove problematic as it has only been tested
+#       using a Pico, and should be commented out if device doesn't function as expected when using it.
+
+freq(62_500_000)
 
 # Memory Optimizations:
 #	- Variables holding the GPIO pin values are not used passed the initialization of the peripherals, they may be
